@@ -1,5 +1,10 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hotkey_manager/hotkey_manager.dart';
+import 'package:ffi/ffi.dart';
+import 'package:win32/win32.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key, required this.title});
@@ -14,8 +19,13 @@ class HomeState extends State<Home> {
   static const MAX_LENGTH = 3;
   static const MIN_CPS = 0;
   static const MAX_CPS = 100;
+  static var START_KEY = HotKey(
+      key: PhysicalKeyboardKey.keyV,
+      modifiers: [HotKeyModifier.alt, HotKeyModifier.shift],
+      scope: HotKeyScope.system);
   var cps = MIN_CPS;
   var textController = TextEditingController(text: MIN_CPS.toString());
+  var enabled = false;
 
   @override
   void initState() {
@@ -33,12 +43,39 @@ class HomeState extends State<Home> {
 
       cps = text;
     });
+
+    setupHotKeys();
+  }
+
+  Future<void> setupHotKeys() async {
+    await hotKeyManager.register(START_KEY, keyDownHandler: (hotkey) {
+      enabled = !enabled;
+
+      if (enabled) {
+        final mouse = calloc<INPUT>();
+        mouse.ref.type = INPUT_TYPE.INPUT_MOUSE;
+        mouse.ref.mi.dwFlags = MOUSE_EVENT_FLAGS.MOUSEEVENTF_LEFTDOWN;
+        SendInput(1, mouse, sizeOf<INPUT>());
+
+        Sleep(1000);
+        mouse.ref.mi.dwFlags = MOUSE_EVENT_FLAGS.MOUSEEVENTF_RIGHTUP;
+        SendInput(1, mouse, sizeOf<INPUT>());
+
+        free(mouse);
+    }
+    });
   }
 
   @override
   void dispose() {
     textController.dispose();
+    disposeHotkeys();
     super.dispose();
+  }
+
+  Future<void> disposeHotkeys() async {
+    await hotKeyManager.unregister(START_KEY);
+    await hotKeyManager.unregisterAll();
   }
 
   @override
@@ -63,13 +100,6 @@ class HomeState extends State<Home> {
                 labelText: "Clicks Per Second",
               ),
             ),
-          ),
-
-          ElevatedButton(
-            onPressed: () {
-              print("Clicks Per Second: $cps");
-            },
-            child: const Text("Start"),
           ),
         ],
       ),

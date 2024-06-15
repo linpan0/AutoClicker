@@ -58,7 +58,7 @@ class HomeState extends State<Home> {
         SendInput(1, mouse, sizeOf<INPUT>());
 
         Sleep(1000);
-        mouse.ref.mi.dwFlags = MOUSE_EVENT_FLAGS.MOUSEEVENTF_RIGHTUP;
+        mouse.ref.mi.dwFlags = MOUSE_EVENT_FLAGS.MOUSEEVENTF_LEFTUP;
         SendInput(1, mouse, sizeOf<INPUT>());
 
         free(mouse);
